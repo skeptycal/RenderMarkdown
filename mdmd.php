@@ -45,7 +45,7 @@ will get turned into this:
             )
         [blank] => Array
             (
-                [0] => 
+                [0] =>
             )
     )
 

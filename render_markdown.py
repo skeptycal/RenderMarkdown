@@ -3,9 +3,10 @@ import re
 from urllib import unquote
 import markdown
 
+
 def parse_metadata(source_text):
     """ Parse Meta-Data and separate from the original text.
-    
+
     This was copied from the Python-Markdown meta-data extension
     because we need to get the metadata *before* processing the text.
     """
@@ -17,7 +18,7 @@ def parse_metadata(source_text):
     while 1:
         line = lines.pop(0)
         if line.strip() == '':
-            break # blank line - done
+            break  # blank line - done
         m1 = META_RE.match(line)
         if m1:
             key = m1.group('key').lower().strip()
@@ -33,8 +34,9 @@ def parse_metadata(source_text):
                 meta[key].append(m2.group('value').strip())
             else:
                 lines.insert(0, line)
-                break # no meta data - done
+                break  # no meta data - done
     return (meta, '\n'.join(lines))
+
 
 def first_heading(source_text):
     """Scan through the text and return the first heading."""
@@ -44,13 +46,14 @@ def first_heading(source_text):
             return l.strip(u'# ')
     return None
 
+
 def application(environ, start_response):
     # defaults
     status = '200 OK'
     show_text = False
     md_ext = ['extra', 'codehilite']
-    
-    ## read the INI settings
+
+    # read the INI settings
     pwd = os.path.dirname(environ['SCRIPT_FILENAME'])
     settings = {}
     conf_pat = re.compile(r'^(\S*)\s?=\s?(.*)$')
@@ -59,12 +62,12 @@ def application(environ, start_response):
         if m:
             s = m.group(1)
             v = m.group(2).strip('"\'')
-            ## convert various strings to their boolean value
+            # convert various strings to their boolean value
             if v.lower() == 'yes' or v.lower() == 'on' or v == '1':
                 v = True
             elif v.lower() == 'no' or v.lower() == 'off' or v == '0':
                 v = False
-            ## support PHP-style array values
+            # support PHP-style array values
             if s.endswith('[]'):
                 s = s[:-2]
                 if settings.has_key(s):
@@ -73,8 +76,8 @@ def application(environ, start_response):
                     settings[s] = [v]
             else:
                 settings[s] = v
-    
-    ## get the source file path
+
+    # get the source file path
     try:
         requested = unquote(environ['PATH_INFO'])
     except KeyError:
@@ -85,18 +88,18 @@ def application(environ, start_response):
         show_text = True
     source_file = environ['DOCUMENT_ROOT'] + requested
     source_text = unicode(open(source_file).read(), 'utf-8')
-    
-    ## display original text?
+
+    # display original text?
     if show_text:
         response_headers = [
             ('Content-type', 'text/plain;charset=utf-8'),
             ('Content-Length', str(len(source_text))),
         ]
         start_response(status, response_headers)
-        
+
         return [source_text.encode('utf-8')]
-    
-    ## read some prefs
+
+    # read some prefs
     include_toc = bool(int(settings.get('toc', 0)))
     toc_hidden = bool(int(settings.get('toc_hidden', 0)))
     meta_behavior = settings.get('metadata', 'ignore')
@@ -104,16 +107,16 @@ def application(environ, start_response):
     link_pattern = settings.get('link_pattern', None)
     text_version = bool(int(settings.get('text_version', 0)))
     text_suffix = settings.get('text_suffix', "text")
-    
-    ## process metadata
+
+    # process metadata
     meta_title = None
     if meta_behavior != 'ignore':
         (metadata, source_text) = parse_metadata(source_text)
-        ## check for a title
+        # check for a title
         if metadata.has_key('title') and len(metadata['title'][0]) > 0:
             meta_title = metadata['title'][0]
             del metadata['title']
-        ## respect the per-document pref for table of contents
+        # respect the per-document pref for table of contents
         if metadata.has_key('toc'):
             toc = metadata['toc'][0].lower()
             if toc == 'on' or toc == 'yes' or toc == '1':
@@ -121,14 +124,15 @@ def application(environ, start_response):
             elif toc == 'off' or toc == 'no' or toc == '0':
                 include_toc = False
             del metadata['toc']
-        ## display metadata?
+        # display metadata?
         if meta_behavior == 'table':
             meta_html_table = '<table id="metadata">\n'
             for (name, values) in metadata.items():
                 if link_pattern is not None and name in link_attrs:
                     newval = []
                     for target in values:
-                        link = link_pattern.replace('%k', name).replace('%v', target)
+                        link = link_pattern.replace(
+                            '%k', name).replace('%v', target)
                         newval.append('<a href="%s">%s</a>' % (link, target))
                     values = newval
                 table_row = '''<tr>
@@ -139,33 +143,32 @@ def application(environ, start_response):
                 meta_html_table = meta_html_table + table_row
             meta_html_table = meta_html_table + '</table>\n'
             source_text = meta_html_table + source_text
-    
+
     toc_display = u''
     if include_toc:
-        ## make sure the required extension is loaded
+        # make sure the required extension is loaded
         md_ext.append('toc')
-        ## molest the source
+        # molest the source
         source_text = u'<p id="showhide" class="controls" onClick="toggleVisibility(this, \'TOC\');">Hide Table of Contents</p>\n\n[TOC]\n\n' + source_text
-        ## set initial state for table of contents
+        # set initial state for table of contents
         if toc_hidden:
             toc_display = u' onLoad="javascript:toggleVisibility(document.getElementById(\'showhide\'), \'TOC\');"'
-    
+
     text_link = ''
     if text_version:
         text_href = '%s-%s' % (requested, text_suffix)
         text_div = '<div class="controls" style="float: right"><a href="%s">View Original Text</a></div>' % text_href
         source_text = unicode(text_div, 'utf-8') + source_text
-    
-    
-    ## a Markdown object to do the work
+
+    # a Markdown object to do the work
     md = markdown.Markdown(extensions=md_ext,
                            output_format='html4')
-    ## convert text to HTML
+    # convert text to HTML
     mdown = md.convert(source_text)
-    
+
     title = "Viewing Markdown file (%s) as HTML" % os.path.basename(requested)
     if meta_title is not None:
-        ## a title in the metadata takes precedence
+        # a title in the metadata takes precedence
         title = meta_title
     elif bool(int(settings.get('title_from_heading', 1))):
         heading = first_heading(source_text)
@@ -206,21 +209,20 @@ def application(environ, start_response):
 </html>
 
 ''' % (ht_path, codehilite_style, ht_path, title, toc_display, mdown)
-    
-    ## use an ID instead of a class for the table of contents
+
+    # use an ID instead of a class for the table of contents
     html = html.replace(u'div class="toc"', 'div id="TOC"')
-    
+
     # lines = ['* * * WEB SERVER ENVIRONMENT * * *']
     # for v in environ:
     #     lines.append('%s:: %s' % (v, environ[v]))
     # output = '\n'.join(lines)
     # html += '<pre>' + output + '</pre>'
-    
+
     response_headers = [
         ('Content-type', 'text/html'),
         ('Content-Length', str(len(html))),
     ]
     start_response(status, response_headers)
-    
-    return [html.encode('utf-8')]
 
+    return [html.encode('utf-8')]

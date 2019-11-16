@@ -3,7 +3,7 @@
 /*
     To display a Markdown file as HTML, use mod_rewrite to call this script
     when the file is requested.
-    
+
     By Rob McBroom, 2010
 */
 
@@ -245,10 +245,10 @@ function get_title( $html ) {
 }
 
 function safe_parameter( $unsafe ) {
-  
+
   /* change a string into something that can be safely used as a parameter
   in a URL. Example: "Rob is a PHP Genius" would become "rob_is_a_php_genius" */
-  
+
   // remove HTML tags
   $unsafe = strip_tags( $unsafe );
   // remove all but alphanumerics, spaces and underscores
@@ -263,7 +263,7 @@ function safe_parameter( $unsafe ) {
 function html_comment( $invar ) {
   /* for debugging - this function will spit out an HTML comment
   to show what's in a variable */
-  
+
   echo "\n<!--\n";
   print_r( $invar );
   echo "\n-->\n";
